@@ -5,6 +5,7 @@ from cs285.infrastructure.rl_trainer import RL_Trainer
 from cs285.agents.bc_agent import BCAgent
 from cs285.policies.loaded_gaussian_policy import LoadedGaussianPolicy
 
+
 class BC_Trainer(object):
 
     def __init__(self, params):
