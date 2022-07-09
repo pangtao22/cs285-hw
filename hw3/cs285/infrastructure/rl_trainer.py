@@ -42,8 +42,7 @@ class RL_Trainer(object):
         torch.manual_seed(seed)
         ptu.init_gpu(
             use_gpu=not self.params['no_gpu'],
-            gpu_id=self.params['which_gpu']
-        )
+            gpu_id=self.params['which_gpu'])
 
         #############
         ## ENV
@@ -167,8 +166,7 @@ class RL_Trainer(object):
                     use_batchsize = self.params['batch_size_initial']
                 paths, envsteps_this_batch, train_video_paths = (
                     self.collect_training_trajectories(
-                        itr, initial_expertdata, collect_policy, use_batchsize)
-                )
+                        itr, initial_expertdata, collect_policy, use_batchsize))
 
             self.total_envsteps += envsteps_this_batch
 
@@ -210,12 +208,59 @@ class RL_Trainer(object):
             envsteps_this_batch: the sum over the numbers of environment steps in paths
             train_video_paths: paths which also contain videos for visualization purposes
         """
-        # TODO: get this from hw1 or hw2
+        """
+          :param itr:
+          :param initial_expertdata:  path to expert data pkl file
+          :param collect_policy:  the current policy using which we collect data
+          :param batch_size:  the number of transitions we collect
+          :return:
+              paths: a list trajectories
+              envsteps_this_batch: the sum over the numbers of environment steps in paths
+              train_video_paths: paths which also contain videos for visualization purposes
+          """
+
+        # TODO decide whether to load training data or use the current policy to collect more data
+        # HINT: depending on if it's the first iteration or not, decide whether to either
+        # (1) load the data. In this case you can directly return as follows
+        # ``` return loaded_paths, 0, None ```
+
+        # (2) collect `self.params['batch_size']` transitions
+        if initial_expertdata and itr == 0:
+            with open(initial_expertdata, 'rb') as f:
+                loaded_paths = pickle.load(f)
+            return loaded_paths, 0, None
+
+        # TODO collect `batch_size` samples to be used for training
+        # HINT1: use sample_trajectories from utils
+        # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
+        print("\nCollecting data to be used for training...")
+
+        paths, envsteps_this_batch = utils.sample_trajectories(
+            env=self.env, policy=collect_policy,
+            min_timesteps_per_batch=num_transitions_to_sample, max_path_length=self.params['ep_len'])
+
+        # collect more rollouts with the same policy, to be saved as videos in tensorboard
+        # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
+        train_video_paths = None
+        # if self.log_video:
+        #     print('\nCollecting train rollouts to be used for saving videos...')
+        #     ## TODO look in utils and implement sample_n_trajectories
+        #     train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+
+        return paths, envsteps_this_batch, train_video_paths
 
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        # TODO: get this from hw1 or hw2
+        print('\nTraining agent using sampled data from replay buffer...')
+        all_logs = []
+        for _ in range(self.params['num_agent_train_steps_per_iter']):
+            (ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch
+             ) = self.agent.sample(self.params['batch_size'])
+            train_log = self.agent.train(ob_batch, ac_batch, re_batch, next_ob_batch, terminal_batch)
+            all_logs.append(train_log)
+
+        return all_logs
 
     ####################################
     ####################################
